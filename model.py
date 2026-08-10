@@ -189,8 +189,35 @@ def scatter_sum_to_nodes(edge_features, dst, num_nodes):
     
     return node_features
 
-# Step 7 - scatter_mean_to_nodes (not yet solved)
-# TODO: implement
+# Step 7 - scatter_mean_to_nodes
+import torch
+
+def scatter_mean_to_nodes(edge_features, dst, num_nodes):
+    # TODO: Scatter-mean edge features onto destination nodes (sum then divide by in-degree).
+    # First, compute the sum of edge features for each node
+    sums = scatter_sum_to_nodes(edge_features, dst, num_nodes)
+    
+    # Then compute the count of edges for each node
+    # Use ones with the same device as edge_features
+    ones = torch.ones(edge_features.size(0), dtype=edge_features.dtype, device=edge_features.device)
+    counts = scatter_sum_to_nodes(ones.unsqueeze(-1), dst, num_nodes)  # Shape: (num_nodes, 1)
+    
+    # Avoid division by zero: where count is 0, keep the sum as 0 (mean will be 0)
+    # For nodes with count > 0, divide sum by count
+    # Use broadcasting to handle the division
+    counts_squeezed = counts.squeeze(-1)  # Shape: (num_nodes,)
+    
+    # Create mask for nodes with at least one incoming edge
+    mask = counts_squeezed > 0
+    
+    # Initialize result with zeros
+    result = torch.zeros_like(sums)
+    
+    # For nodes with incoming edges, compute mean
+    # Need to handle broadcasting carefully: sums[mask] is (M, F), counts[mask] is (M,)
+    result[mask] = sums[mask] / counts_squeezed[mask].unsqueeze(-1)
+    
+    return result
 
 # Step 8 - scatter_max_to_nodes (not yet solved)
 # TODO: implement
