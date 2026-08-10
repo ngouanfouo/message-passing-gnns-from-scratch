@@ -1382,8 +1382,157 @@ def train_node_classifier(params, dataset, forward_fn, num_epochs, lr, mask_key=
         'params': params
     }
 
-# Step 43 - train_graph_regressor (not yet solved)
-# TODO: implement
+# Step 43 - train_graph_regressor
+import torch
+
+def mse_loss(predictions, targets):
+    pred_flat = predictions.flatten()
+    target_flat = targets.flatten()
+    return torch.mean((pred_flat - target_flat) ** 2)
+
+def mae_metric(predictions, targets):
+    pred_flat = predictions.flatten()
+    target_flat = targets.flatten()
+    mae = torch.mean(torch.abs(pred_flat - target_flat))
+    return mae.item()
+
+def gnn_train_step(params, batch, forward_fn, loss_fn, lr):
+    predictions = forward_fn(params, batch)
+    loss = loss_fn(predictions, batch['y'])
+    
+    for p in params.values():
+        if p.grad is not None:
+            p.grad.zero_()
+    
+    loss.backward()
+    
+    with torch.no_grad():
+        for p in params.values():
+            if p.grad is not None:
+                p.sub_(lr * p.grad)
+    
+    return {
+        'loss': loss.item(),
+        'params': params
+    }
+
+def collate_graph_batch(graphs):
+    batched_x = []
+    batched_edge_index_src = []
+    batched_edge_index_dst = []
+    batched_y = []
+    batched_batch = []
+    
+    node_offset = 0
+    
+    for graph_id, graph in enumerate(graphs):
+        x = graph['x']
+        edge_index = graph['edge_index']
+        y = graph['y']
+        
+        num_nodes = x.shape[0]
+        
+        batched_x.append(x)
+        batched_batch.extend([graph_id] * num_nodes)
+        
+        if isinstance(y, (int, float)):
+            batched_y.append(torch.tensor([float(y)]))
+        else:
+            batched_y.append(y.unsqueeze(0) if y.dim() == 0 else y)
+        
+        if edge_index.shape[1] > 0:
+            src = edge_index[0] + node_offset
+            dst = edge_index[1] + node_offset
+            batched_edge_index_src.append(src)
+            batched_edge_index_dst.append(dst)
+        
+        node_offset += num_nodes
+    
+    batched_x = torch.cat(batched_x, dim=0) if batched_x else torch.tensor([])
+    
+    if batched_edge_index_src:
+        batched_src = torch.cat(batched_edge_index_src, dim=0)
+        batched_dst = torch.cat(batched_edge_index_dst, dim=0)
+        batched_edge_index = torch.stack([batched_src, batched_dst])
+    else:
+        batched_edge_index = torch.tensor([[], []], dtype=torch.long)
+    
+    batched_y = torch.cat(batched_y, dim=0) if batched_y else torch.tensor([])
+    batched_batch = torch.tensor(batched_batch, dtype=torch.long)
+    
+    return {
+        'x': batched_x,
+        'edge_index': batched_edge_index,
+        'batch': batched_batch,
+        'y': batched_y
+    }
+
+def train_graph_regressor(params, graphs, forward_fn, num_epochs, lr, batch_size=8):
+    """Train a graph regressor over multiple epochs of mini-batches.
+
+    Args:
+        params: dict of trainable torch tensors.
+        graphs: list of graph dicts with keys x, edge_index, y.
+        forward_fn: callable(params, batch) -> predictions.
+        num_epochs: number of training epochs.
+        lr: learning rate for SGD updates.
+        batch_size: graphs per mini-batch (default 8).
+
+    Returns:
+        history: dict with 'loss' and 'mae' lists of per-epoch floats.
+        params: updated parameter dict.
+    """
+    history = {'loss': [], 'mae': []}
+    
+    for epoch in range(num_epochs):
+        epoch_losses = []
+        
+        # Process graphs in mini-batches
+        for i in range(0, len(graphs), batch_size):
+            # Get current batch of graphs
+            batch_graphs = graphs[i:i + batch_size]
+            
+            # Collate graphs into a batched graph
+            batch = collate_graph_batch(batch_graphs)
+            
+            # Run one training step
+            step_out = gnn_train_step(
+                params, 
+                batch, 
+                forward_fn, 
+                mse_loss, 
+                lr
+            )
+            
+            # Record loss for this batch
+            epoch_losses.append(step_out['loss'])
+        
+        # Compute mean loss for this epoch
+        mean_loss = sum(epoch_losses) / len(epoch_losses) if epoch_losses else 0.0
+        history['loss'].append(mean_loss)
+        
+        # Compute MAE on the full dataset (without updating gradients)
+        all_predictions = []
+        all_targets = []
+        
+        with torch.no_grad():
+            for graph in graphs:
+                # Create a single-graph batch
+                single_batch = collate_graph_batch([graph])
+                # Forward pass for single graph
+                pred = forward_fn(params, single_batch)
+                all_predictions.append(pred)
+                all_targets.append(graph['y'])
+        
+        # Stack predictions and targets
+        all_predictions = torch.cat(all_predictions, dim=0)
+        all_targets = torch.tensor([t.item() if torch.is_tensor(t) else t for t in all_targets], dtype=torch.float32)
+        
+        # Compute MAE
+        mae = mae_metric(all_predictions, all_targets)
+        history['mae'].append(mae)
+    
+    return history, params
 
 # Step 44 - representation_similarity (not yet solved)
 # TODO: implement
