@@ -363,8 +363,34 @@ def stack_message_passing_layers(node_features, src, dst, layers, edge_attr=None
     
     return embeddings, all_layer_outputs
 
-# Step 14 - gcn_renormalize_adjacency (not yet solved)
-# TODO: implement
+# Step 14 - gcn_renormalize_adjacency
+import torch
+
+def gcn_renormalize_adjacency(src, dst, num_nodes):
+    """Apply Kipf-Welling renormalization: self-loops then symmetric norm.
+
+    Args:
+        src: LongTensor [E] source node indices.
+        dst: LongTensor [E] destination node indices.
+        num_nodes: int, number of nodes N.
+
+    Returns:
+        src_hat: LongTensor [E + N] sources after self-loops.
+        dst_hat: LongTensor [E + N] destinations after self-loops.
+        norm_weight: FloatTensor [E + N] symmetrically normalized weights.
+    """
+    # Step 1: Add self-loops
+    src_hat, dst_hat = add_self_loops(src, dst, num_nodes)
+    
+    # Step 2: All edge weights are 1.0 (unweighted graph)
+    # Create ones for all edges (original + self-loops)
+    E_hat = src_hat.size(0)
+    edge_weight = torch.ones(E_hat, dtype=torch.float32, device=src.device)
+    
+    # Step 3: Symmetrically normalize the augmented adjacency
+    norm_weight = symmetric_normalize_edge_weights(src_hat, dst_hat, num_nodes, edge_weight)
+    
+    return src_hat, dst_hat, norm_weight
 
 # Step 15 - gcn_linear_transform (not yet solved)
 # TODO: implement
