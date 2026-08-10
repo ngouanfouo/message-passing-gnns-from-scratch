@@ -415,8 +415,52 @@ def gcn_linear_transform(node_features, weight, bias=None):
     
     return transformed
 
-# Step 16 - gcn_layer_forward (not yet solved)
-# TODO: implement
+# Step 16 - gcn_layer_forward
+import torch
+
+def gcn_layer_forward(node_features, src, dst, weight, bias=None, num_nodes=None, activation=None):
+    """Forward pass of one GCN layer: renormalize, transform, propagate.
+
+    Args:
+        node_features: FloatTensor of shape (N, Fin).
+        src: LongTensor of shape (E,) source indices.
+        dst: LongTensor of shape (E,) destination indices.
+        weight: FloatTensor of shape (Fin, Fout).
+        bias: optional FloatTensor of shape (Fout,).
+        num_nodes: optional int N; defaults to node_features.shape[0].
+        activation: optional callable applied to the output.
+
+    Returns:
+        FloatTensor of shape (N, Fout).
+    """
+    # Set num_nodes if not provided
+    if num_nodes is None:
+        num_nodes = node_features.shape[0]
+    
+    # Step 1: GCN renormalization - add self-loops and compute normalized weights
+    src_hat, dst_hat, norm_weights = gcn_renormalize_adjacency(src, dst, num_nodes)
+    
+    # Step 2: Apply linear transform to node features
+    transformed_features = gcn_linear_transform(node_features, weight, bias)
+    
+    # Step 3: Message passing with GCN propagation
+    # Messages are the transformed features of the source nodes
+    # We need to gather transformed features for source nodes and weight them
+    gathered_src = gather_source_node_features(transformed_features, src_hat)
+    
+    # Apply normalized weights to messages (elementwise multiplication)
+    # norm_weights has shape (E_hat,), gathered_src has shape (E_hat, Fout)
+    # We need to broadcast norm_weights to multiply each feature dimension
+    weighted_messages = gathered_src * norm_weights.unsqueeze(-1)
+    
+    # Aggregate messages to destination nodes using sum
+    aggregated = scatter_sum_to_nodes(weighted_messages, dst_hat, num_nodes)
+    
+    # Step 4: Apply activation if provided
+    if activation is not None:
+        aggregated = activation(aggregated)
+    
+    return aggregated
 
 # Step 17 - init_gcn_parameters (not yet solved)
 # TODO: implement
