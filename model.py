@@ -768,8 +768,51 @@ def gat_layer_forward(node_features, src, dst, head_params, merge_mode='concat',
     
     return merged, all_attn
 
-# Step 24 - init_gat_parameters (not yet solved)
-# TODO: implement
+# Step 24 - init_gat_parameters
+import torch
+
+def init_gat_parameters(in_dim, out_dim, num_heads=1, with_bias=True, seed=None):
+    # TODO: Initialize multi-head GAT parameters with Glorot-style initialization.
+    # Set seed if provided
+    if seed is not None:
+        torch.manual_seed(seed)
+    
+    head_params = []
+    
+    for _ in range(num_heads):
+        # Initialize weight matrix: shape (in_dim, out_dim)
+        # Glorot uniform with fan_in=in_dim, fan_out=out_dim
+        a_weight = torch.sqrt(torch.tensor(6.0 / (in_dim + out_dim)))
+        weight = torch.empty(in_dim, out_dim).uniform_(-a_weight, a_weight)
+        weight.requires_grad_(True)
+        
+        # Initialize source attention vector: shape (out_dim,)
+        # Glorot uniform with fan_in=out_dim, fan_out=1
+        a_attn = torch.sqrt(torch.tensor(6.0 / (out_dim + 1)))
+        attn_src = torch.empty(out_dim).uniform_(-a_attn, a_attn)
+        attn_src.requires_grad_(True)
+        
+        # Initialize destination attention vector: shape (out_dim,)
+        # Glorot uniform with fan_in=out_dim, fan_out=1
+        attn_dst = torch.empty(out_dim).uniform_(-a_attn, a_attn)
+        attn_dst.requires_grad_(True)
+        
+        # Create parameter dict
+        params = {
+            'weight': weight,
+            'attn_src': attn_src,
+            'attn_dst': attn_dst
+        }
+        
+        # Add bias if requested
+        if with_bias:
+            bias = torch.zeros(out_dim)
+            bias.requires_grad_(True)
+            params['bias'] = bias
+        
+        head_params.append(params)
+    
+    return head_params
 
 # Step 25 - gat_stack_forward (not yet solved)
 # TODO: implement
