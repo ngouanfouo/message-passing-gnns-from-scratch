@@ -1258,8 +1258,17 @@ def cross_entropy_loss(logits, targets):
     # This computes log-softmax internally and returns the mean loss
     return F.cross_entropy(logits, targets, reduction='mean')
 
-# Step 38 - mse_loss (not yet solved)
-# TODO: implement
+# Step 38 - mse_loss
+import torch
+
+def mse_loss(predictions, targets):
+    # TODO: Compute mean squared error between predictions and targets
+    # Flatten both tensors to 1-D
+    pred_flat = predictions.flatten()
+    target_flat = targets.flatten()
+    
+    # Compute mean squared error
+    return torch.mean((pred_flat - target_flat) ** 2)
 
 # Step 39 - accuracy_metric (not yet solved)
 # TODO: implement
