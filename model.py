@@ -944,8 +944,31 @@ def global_sum_pool(node_features, batch_index, num_graphs=None):
     
     return summed_features
 
-# Step 28 - global_max_pool (not yet solved)
-# TODO: implement
+# Step 28 - global_max_pool
+import torch
+
+def global_max_pool(node_features, batch_index, num_graphs=None):
+    # TODO: Globally max-pool node features into one graph-level vector per graph.
+    # Determine number of graphs
+    if num_graphs is None:
+        num_graphs = batch_index.max().item() + 1
+    
+    # Get feature dimension and device
+    F = node_features.shape[1]
+    device = node_features.device
+    dtype = node_features.dtype
+    
+    # Initialize with -inf for all graphs and features
+    max_features = torch.full((num_graphs, F), float('-inf'), dtype=dtype, device=device)
+    
+    # Use index_reduce_ with 'amax' to compute elementwise max
+    # batch_index is used as the "destination" for reduction
+    max_features.index_reduce_(0, batch_index, node_features, reduce='amax', include_self=False)
+    
+    # Note: -inf rows remain for graphs that have no nodes
+    # For graphs with nodes, all values will be finite (since node_features are finite)
+    
+    return max_features
 
 # Step 29 - global_mean_max_pool (not yet solved)
 # TODO: implement
