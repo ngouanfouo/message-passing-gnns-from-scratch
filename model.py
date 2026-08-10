@@ -1013,8 +1013,20 @@ def node_classification_head(node_embeddings, weight, bias=None):
     
     return logits
 
-# Step 31 - graph_regression_head (not yet solved)
-# TODO: implement
+# Step 31 - graph_regression_head
+import torch
+
+def graph_regression_head(graph_embeddings, weight, bias=None):
+    # TODO: Map pooled graph embeddings to regression predictions via a linear head.
+    # Compute matrix product: graph_embeddings @ weight.T
+    # weight is of shape (out_dim, D), so we need to transpose it for multiplication
+    predictions = graph_embeddings @ weight.T
+    
+    # Add bias if provided
+    if bias is not None:
+        predictions = predictions + bias
+    
+    return predictions
 
 # Step 32 - generate_sbm_graph (not yet solved)
 # TODO: implement
