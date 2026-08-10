@@ -1554,8 +1554,31 @@ def representation_similarity(features_a, features_b):
     # Return mean over nodes as Python float
     return cosine_sim.mean().item()
 
-# Step 45 - oversmoothing_diagnostic (not yet solved)
-# TODO: implement
+# Step 45 - oversmoothing_diagnostic
+import torch
+
+def oversmoothing_diagnostic(layer_features):
+    # TODO: Diagnose oversmoothing via consecutive-layer representation similarities.
+    # If fewer than 2 layers, return empty list and mean 0.0
+    if len(layer_features) < 2:
+        return {
+            'pairwise_similarities': [],
+            'mean_similarity': 0.0
+        }
+    
+    # Compute similarity between consecutive layers
+    pairwise_similarities = []
+    for i in range(len(layer_features) - 1):
+        sim = representation_similarity(layer_features[i], layer_features[i + 1])
+        pairwise_similarities.append(sim)
+    
+    # Compute mean similarity
+    mean_similarity = sum(pairwise_similarities) / len(pairwise_similarities)
+    
+    return {
+        'pairwise_similarities': pairwise_similarities,
+        'mean_similarity': mean_similarity
+    }
 
 # Step 46 - mpnn_gnn_experiment (not yet solved)
 # TODO: implement
