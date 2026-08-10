@@ -629,8 +629,56 @@ def gat_masked_neighbor_softmax(logits, dst, num_nodes):
     
     return coefficients
 
-# Step 21 - gat_head_forward (not yet solved)
-# TODO: implement
+# Step 21 - gat_head_forward
+import torch
+
+def gat_head_forward(node_features, src, dst, weight, attn_src, attn_dst, bias=None, num_nodes=None, activation=None):
+    """Forward pass of a single GAT attention head.
+
+    Args:
+        node_features: FloatTensor of shape (N, Fin).
+        src: LongTensor of shape (E,) source indices.
+        dst: LongTensor of shape (E,) destination indices.
+        weight: FloatTensor of shape (Fin, Fout) shared linear transform.
+        attn_src: FloatTensor of shape (Fout,) source attention vector.
+        attn_dst: FloatTensor of shape (Fout,) destination attention vector.
+        bias: optional FloatTensor of shape (Fout,).
+        num_nodes: optional int N; inferred from node_features if None.
+        activation: optional callable applied to the head output.
+
+    Returns:
+        head_out: FloatTensor of shape (N, Fout).
+        attn_coeffs: FloatTensor of shape (E,) attention coefficients.
+    """
+    # Set num_nodes if not provided
+    if num_nodes is None:
+        num_nodes = node_features.shape[0]
+    
+    # Step 1: Compute attention logits and transformed features
+    logits, transformed = gat_attention_logits(node_features, src, dst, attn_src, attn_dst, weight)
+    
+    # Step 2: Apply masked softmax to get attention coefficients
+    attn_coeffs = gat_masked_neighbor_softmax(logits, dst, num_nodes)
+    
+    # Step 3: Aggregate messages
+    # Gather transformed features for source nodes
+    transformed_src = transformed[src]  # Shape: (E, Fout)
+    
+    # Weight messages by attention coefficients
+    weighted_messages = transformed_src * attn_coeffs.unsqueeze(-1)  # Shape: (E, Fout)
+    
+    # Aggregate weighted messages to destination nodes
+    head_out = scatter_sum_to_nodes(weighted_messages, dst, num_nodes)  # Shape: (N, Fout)
+    
+    # Step 4: Add bias if provided
+    if bias is not None:
+        head_out = head_out + bias
+    
+    # Step 5: Apply activation if provided
+    if activation is not None:
+        head_out = activation(head_out)
+    
+    return head_out, attn_coeffs
 
 # Step 22 - merge_gat_heads (not yet solved)
 # TODO: implement
