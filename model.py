@@ -112,8 +112,46 @@ def compute_node_degrees(src, dst, num_nodes, edge_weight=None):
     
     return degrees
 
-# Step 4 - symmetric_normalize_edge_weights (not yet solved)
-# TODO: implement
+# Step 4 - symmetric_normalize_edge_weights
+import torch
+
+def symmetric_normalize_edge_weights(src, dst, num_nodes, edge_weight=None):
+    """Compute symmetrically normalized edge weights w_ij / sqrt(d_i * d_j).
+
+    Args:
+        src (LongTensor): Source node indices of shape [E].
+        dst (LongTensor): Destination node indices of shape [E].
+        num_nodes (int): Number of nodes N.
+        edge_weight (FloatTensor, optional): Per-edge weights of shape [E].
+            Defaults to all ones (float32) when None.
+
+    Returns:
+        FloatTensor: Symmetrically normalized weights of shape [E].
+    """
+    # If edge_weight is None, use ones
+    if edge_weight is None:
+        edge_weight = torch.ones(src.size(0), dtype=torch.float32, device=src.device)
+    else:
+        # Ensure edge_weight is float32
+        edge_weight = edge_weight.to(torch.float32)
+    
+    # Compute (weighted) in-degrees for each node
+    deg = compute_node_degrees(src, dst, num_nodes, edge_weight)
+    
+    # Compute inverse square root of degrees, treating 0 as 0
+    # For degree > 0, compute 1/sqrt(deg), otherwise 0
+    inv_sqrt_deg = torch.zeros_like(deg)
+    nonzero_mask = deg > 0
+    inv_sqrt_deg[nonzero_mask] = 1.0 / torch.sqrt(deg[nonzero_mask])
+    
+    # Get inverse square root for source and destination nodes
+    inv_sqrt_src = inv_sqrt_deg[src]
+    inv_sqrt_dst = inv_sqrt_deg[dst]
+    
+    # Normalize: w_ij / sqrt(d_i * d_j) = w_ij * inv_sqrt(d_i) * inv_sqrt(d_j)
+    normalized_weights = edge_weight * inv_sqrt_src * inv_sqrt_dst
+    
+    return normalized_weights
 
 # Step 5 - gather_source_node_features (not yet solved)
 # TODO: implement
