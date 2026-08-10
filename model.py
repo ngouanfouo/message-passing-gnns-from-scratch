@@ -1103,8 +1103,54 @@ def build_node_classification_dataset(num_graphs, num_nodes, num_classes, p_in, 
     
     return graphs
 
-# Step 34 - generate_molecule_like_graph (not yet solved)
-# TODO: implement
+# Step 34 - generate_molecule_like_graph
+import torch
+
+def generate_molecule_like_graph(num_nodes, num_node_features, edge_prob, seed=None):
+    # TODO: Synthesize one molecule-like graph for graph-level regression.
+    # Set seed if provided
+    if seed is not None:
+        torch.manual_seed(seed)
+    
+    # Step 1: Generate node features from standard normal
+    x = torch.randn(num_nodes, num_node_features)
+    
+    # Step 2: Generate edges
+    src_list = []
+    dst_list = []
+    degrees = torch.zeros(num_nodes, dtype=torch.long)
+    
+    # Iterate over all pairs (i, j) with i < j
+    for i in range(num_nodes):
+        for j in range(i + 1, num_nodes):
+            # Sample edge with probability edge_prob
+            if torch.rand(1).item() < edge_prob:
+                # Add both directed edges
+                src_list.append(i)
+                dst_list.append(j)
+                src_list.append(j)
+                dst_list.append(i)
+                # Increment degrees for both nodes
+                degrees[i] += 1
+                degrees[j] += 1
+    
+    # Convert to tensors
+    src = torch.tensor(src_list, dtype=torch.long)
+    dst = torch.tensor(dst_list, dtype=torch.long)
+    edge_index = torch.stack([src, dst])  # Shape: (2, E)
+    
+    # Step 3: Compute target y
+    # y = mean over nodes of deg(v) * mean(x[v])
+    # mean(x[v]) is the mean of node features across feature dimension
+    node_mean = x.mean(dim=-1)  # Shape: (num_nodes,)
+    deg_times_mean = degrees.float() * node_mean  # Shape: (num_nodes,)
+    y = deg_times_mean.mean()  # Scalar
+    
+    return {
+        'x': x,
+        'edge_index': edge_index,
+        'y': y
+    }
 
 # Step 35 - build_graph_regression_dataset (not yet solved)
 # TODO: implement
