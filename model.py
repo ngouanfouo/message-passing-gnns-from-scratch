@@ -585,8 +585,49 @@ def gat_attention_logits(node_features, src, dst, attn_src, attn_dst, weight):
     
     return logits, transformed
 
-# Step 20 - gat_masked_neighbor_softmax (not yet solved)
-# TODO: implement
+# Step 20 - gat_masked_neighbor_softmax
+import torch
+
+def gat_masked_neighbor_softmax(logits, dst, num_nodes):
+    """Numerically stable softmax of attention logits over each dest node's neighbors.
+
+    Args:
+        logits: FloatTensor of shape (E,) with one unnormalized attention logit per edge.
+        dst: LongTensor of shape (E,) with destination node index for each edge.
+        num_nodes: int, number of nodes N in the graph.
+
+    Returns:
+        FloatTensor of shape (E,) with attention coefficients that sum to 1 over
+        each destination's incoming edges.
+    """
+    # Step 1: Compute max logit for each destination node
+    # Initialize with -inf for all nodes
+    max_per_node = torch.full((num_nodes,), float('-inf'), device=logits.device, dtype=logits.dtype)
+    
+    # Use index_reduce to compute max for each destination
+    max_per_node.index_reduce_(0, dst, logits, reduce='amax', include_self=False)
+    
+    # Step 2: Subtract max for numerical stability and compute exp
+    # For each edge, subtract the max of its destination node
+    logits_shifted = logits - max_per_node[dst]
+    exp_logits = torch.exp(logits_shifted)
+    
+    # Step 3: Compute sum of exp for each destination node
+    # Initialize with zeros
+    sum_per_node = torch.zeros(num_nodes, device=logits.device, dtype=logits.dtype)
+    
+    # Scatter-sum the exponentials to destination nodes
+    sum_per_node.index_add_(0, dst, exp_logits)
+    
+    # Step 4: Normalize to get softmax probabilities
+    # For each edge, divide exp by the sum of its destination node
+    coefficients = exp_logits / sum_per_node[dst]
+    
+    # Handle potential NaN from division by zero (if a node has no incoming edges)
+    # But coefficients for such edges wouldn't exist anyway since dst only has valid entries
+    coefficients = torch.nan_to_num(coefficients, nan=0.0)
+    
+    return coefficients
 
 # Step 21 - gat_head_forward (not yet solved)
 # TODO: implement
