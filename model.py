@@ -546,8 +546,44 @@ def gcn_stack_forward(node_features, src, dst, param_list, activations=None, num
     
     return embeddings, all_layer_outputs
 
-# Step 19 - gat_attention_logits (not yet solved)
-# TODO: implement
+# Step 19 - gat_attention_logits
+import torch
+import torch.nn.functional as F
+
+def gat_attention_logits(node_features, src, dst, attn_src, attn_dst, weight):
+    """Compute unnormalized GAT attention logits and transformed features.
+
+    Args:
+        node_features: FloatTensor of shape (N, Fin).
+        src: LongTensor of shape (E,) source indices.
+        dst: LongTensor of shape (E,) destination indices.
+        attn_src: FloatTensor of shape (Fout,) source attention vector.
+        attn_dst: FloatTensor of shape (Fout,) destination attention vector.
+        weight: FloatTensor of shape (Fin, Fout) shared linear transform.
+
+    Returns:
+        logits: FloatTensor of shape (E,) unnormalized attention scores.
+        transformed: FloatTensor of shape (N, Fout) linearly transformed nodes.
+    """
+    # Step 1: Apply linear transform to all nodes
+    # transformed = X @ W (no bias)
+    transformed = node_features @ weight  # Shape: (N, Fout)
+    
+    # Step 2: Compute attention scores for each edge
+    # Gather transformed features for source and destination nodes
+    transformed_src = transformed[src]  # Shape: (E, Fout)
+    transformed_dst = transformed[dst]  # Shape: (E, Fout)
+    
+    # Compute attention logits: e_ij = LeakyReLU(attn_src^T (W h_i) + attn_dst^T (W h_j))
+    # attn_src and attn_dst are shape (Fout,)
+    # attn_src^T (W h_i) = dot product of attn_src with transformed_src
+    src_attn = torch.sum(attn_src * transformed_src, dim=-1)  # Shape: (E,)
+    dst_attn = torch.sum(attn_dst * transformed_dst, dim=-1)  # Shape: (E,)
+    
+    # Sum and apply LeakyReLU with negative_slope=0.2
+    logits = F.leaky_relu(src_attn + dst_attn, negative_slope=0.2)
+    
+    return logits, transformed
 
 # Step 20 - gat_masked_neighbor_softmax (not yet solved)
 # TODO: implement
