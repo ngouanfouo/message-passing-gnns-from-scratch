@@ -1028,8 +1028,59 @@ def graph_regression_head(graph_embeddings, weight, bias=None):
     
     return predictions
 
-# Step 32 - generate_sbm_graph (not yet solved)
-# TODO: implement
+# Step 32 - generate_sbm_graph
+import torch
+
+def generate_sbm_graph(num_nodes, num_classes, p_in, p_out, feature_dim, seed=None):
+    # TODO: Sample one SBM graph with community labels and random node features.
+    # Set seed if provided
+    if seed is not None:
+        torch.manual_seed(seed)
+    
+    # Step 1: Assign community labels in contiguous blocks
+    node_labels = torch.zeros(num_nodes, dtype=torch.long)
+    for c in range(num_classes):
+        start = c * num_nodes // num_classes
+        end = (c + 1) * num_nodes // num_classes
+        node_labels[start:end] = c
+    
+    # Step 2: Sample node features from standard normal distribution
+    node_features = torch.randn(num_nodes, feature_dim)
+    
+    # Step 3: Generate edges based on SBM probabilities
+    src_list = []
+    dst_list = []
+    
+    # Iterate over all pairs of nodes (i, j) with i < j to avoid duplicate undirected edges
+    for i in range(num_nodes):
+        for j in range(i + 1, num_nodes):
+            # Determine if nodes are in the same community
+            same_community = (node_labels[i] == node_labels[j])
+            
+            # Choose probability based on community membership
+            prob = p_in if same_community else p_out
+            
+            # Sample edge with probability prob
+            if torch.rand(1).item() < prob:
+                # Add both directed edges (i -> j and j -> i)
+                src_list.append(i)
+                dst_list.append(j)
+                src_list.append(j)
+                dst_list.append(i)
+    
+    # Convert to tensors
+    src = torch.tensor(src_list, dtype=torch.long)
+    dst = torch.tensor(dst_list, dtype=torch.long)
+    
+    # Stack to create edge_index of shape (2, E)
+    edge_index = torch.stack([src, dst])
+    
+    return {
+        'node_features': node_features,
+        'edge_index': edge_index,
+        'node_labels': node_labels,
+        'num_nodes': num_nodes
+    }
 
 # Step 33 - build_node_classification_dataset (not yet solved)
 # TODO: implement
