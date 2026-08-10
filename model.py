@@ -1175,8 +1175,78 @@ def build_graph_regression_dataset(num_graphs, num_nodes_range, num_node_feature
     
     return graphs
 
-# Step 36 - collate_graph_batch (not yet solved)
-# TODO: implement
+# Step 36 - collate_graph_batch
+import torch
+
+def collate_graph_batch(graphs):
+    # TODO: Combine variable-size graphs into one disconnected batched graph.
+    num_graphs = len(graphs)
+    
+    # Lists to collect batched data
+    batched_x = []
+    batched_edge_index_src = []
+    batched_edge_index_dst = []
+    batched_y = []
+    batched_batch = []
+    
+    # Cumulative node offset for shifting edge indices
+    node_offset = 0
+    
+    for graph_id, graph in enumerate(graphs):
+        # Get node features for this graph
+        x = graph['x']
+        edge_index = graph['edge_index']
+        y = graph['y']
+        
+        # Number of nodes in this graph
+        num_nodes = x.shape[0]
+        
+        # Collect node features
+        batched_x.append(x)
+        
+        # Collect batch indices for nodes in this graph
+        batched_batch.extend([graph_id] * num_nodes)
+        
+        # Collect target y (convert to tensor if needed)
+        if isinstance(y, (int, float)):
+            batched_y.append(torch.tensor([float(y)]))
+        else:
+            batched_y.append(y.unsqueeze(0) if y.dim() == 0 else y)
+        
+        # Shift edge indices by node_offset and collect
+        if edge_index.shape[1] > 0:
+            # edge_index is of shape (2, E)
+            src = edge_index[0] + node_offset
+            dst = edge_index[1] + node_offset
+            batched_edge_index_src.append(src)
+            batched_edge_index_dst.append(dst)
+        
+        # Update node offset for next graph
+        node_offset += num_nodes
+    
+    # Concatenate node features
+    batched_x = torch.cat(batched_x, dim=0) if batched_x else torch.tensor([])
+    
+    # Concatenate edge indices
+    if batched_edge_index_src:
+        batched_src = torch.cat(batched_edge_index_src, dim=0)
+        batched_dst = torch.cat(batched_edge_index_dst, dim=0)
+        batched_edge_index = torch.stack([batched_src, batched_dst])
+    else:
+        batched_edge_index = torch.tensor([[], []], dtype=torch.long)
+    
+    # Stack targets
+    batched_y = torch.cat(batched_y, dim=0) if batched_y else torch.tensor([])
+    
+    # Convert batch to tensor
+    batched_batch = torch.tensor(batched_batch, dtype=torch.long)
+    
+    return {
+        'x': batched_x,
+        'edge_index': batched_edge_index,
+        'batch': batched_batch,
+        'y': batched_y
+    }
 
 # Step 37 - cross_entropy_loss (not yet solved)
 # TODO: implement
