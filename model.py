@@ -289,8 +289,13 @@ def aggregate_messages(messages, dst, num_nodes, aggr='sum'):
     else:
         raise ValueError(f"Unknown aggregation mode: {aggr}. Must be 'sum', 'mean', or 'max'.")
 
-# Step 11 - update_node_features (not yet solved)
-# TODO: implement
+# Step 11 - update_node_features
+import torch
+
+def update_node_features(node_features, aggregated, update_fn):
+    # TODO: Implement update_node_features to fuse each node's current state with its aggregated...
+    # Apply the update function to fuse node features with aggregated messages
+    return update_fn(node_features, aggregated)
 
 # Step 12 - message_passing_layer (not yet solved)
 # TODO: implement
