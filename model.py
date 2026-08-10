@@ -1330,8 +1330,57 @@ def gnn_train_step(params, batch, forward_fn, loss_fn, lr):
         'params': params
     }
 
-# Step 42 - train_node_classifier (not yet solved)
-# TODO: implement
+# Step 42 - train_node_classifier
+import torch
+
+def train_node_classifier(params, dataset, forward_fn, num_epochs, lr, mask_key='train_mask'):
+    # TODO: Train a functional node-classification GNN for several epochs on a masked graph
+    history = []
+    
+    for epoch in range(num_epochs):
+        # Get the training mask
+        train_mask = dataset[mask_key]
+        
+        # Forward pass: get predictions for all nodes
+        logits = forward_fn(params, dataset['x'], dataset['edge_index'])
+        
+        # Select only training nodes
+        train_logits = logits[train_mask]
+        train_targets = dataset['y'][train_mask]
+        
+        # Compute cross-entropy loss
+        loss = torch.nn.functional.cross_entropy(train_logits, train_targets)
+        
+        # Zero gradients
+        for p in params.values():
+            if p.grad is not None:
+                p.grad.zero_()
+        
+        # Backward pass
+        loss.backward()
+        
+        # Update parameters with SGD
+        with torch.no_grad():
+            for p in params.values():
+                if p.grad is not None:
+                    p.sub_(lr * p.grad)
+        
+        # Compute training accuracy
+        predictions = torch.argmax(train_logits, dim=-1)
+        correct = (predictions == train_targets).sum().item()
+        total = train_targets.numel()
+        accuracy = correct / total
+        
+        # Record history
+        history.append({
+            'loss': loss.item(),
+            'accuracy': accuracy
+        })
+    
+    return {
+        'history': history,
+        'params': params
+    }
 
 # Step 43 - train_graph_regressor (not yet solved)
 # TODO: implement
