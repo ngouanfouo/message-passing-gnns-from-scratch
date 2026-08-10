@@ -153,8 +153,13 @@ def symmetric_normalize_edge_weights(src, dst, num_nodes, edge_weight=None):
     
     return normalized_weights
 
-# Step 5 - gather_source_node_features (not yet solved)
-# TODO: implement
+# Step 5 - gather_source_node_features
+import torch
+
+def gather_source_node_features(node_features, src):
+    # TODO: Return edge-aligned source feature rows (E, F) from node_features.
+    # Use standard tensor indexing to gather features for source nodes
+    return node_features[src]
 
 # Step 6 - scatter_sum_to_nodes (not yet solved)
 # TODO: implement
