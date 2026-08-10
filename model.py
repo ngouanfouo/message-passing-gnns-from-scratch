@@ -1248,8 +1248,15 @@ def collate_graph_batch(graphs):
         'y': batched_y
     }
 
-# Step 37 - cross_entropy_loss (not yet solved)
-# TODO: implement
+# Step 37 - cross_entropy_loss
+import torch
+import torch.nn.functional as F
+
+def cross_entropy_loss(logits, targets):
+    # TODO: Compute mean multi-class cross-entropy between logits and targets.
+    # Use PyTorch's built-in cross entropy loss function
+    # This computes log-softmax internally and returns the mean loss
+    return F.cross_entropy(logits, targets, reduction='mean')
 
 # Step 38 - mse_loss (not yet solved)
 # TODO: implement
