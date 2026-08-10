@@ -879,8 +879,44 @@ def gat_stack_forward(node_features, src, dst, layer_param_list, merge_modes=Non
     
     return embeddings, all_layer_outputs
 
-# Step 26 - global_mean_pool (not yet solved)
-# TODO: implement
+# Step 26 - global_mean_pool
+import torch
+
+def global_mean_pool(node_features, batch_index, num_graphs=None):
+    """Globally mean-pool node features into one graph-level vector per graph.
+
+    Args:
+        node_features: FloatTensor of shape (N, F) with one feature row per node.
+        batch_index: LongTensor of shape (N,) mapping each node to a graph id in
+            {0, ..., B-1}.
+        num_graphs: Optional int B. If None, inferred as batch_index.max() + 1.
+
+    Returns:
+        FloatTensor of shape (B, F); row b is the mean of node features with
+        batch_index == b.
+    """
+    # Determine number of graphs
+    if num_graphs is None:
+        num_graphs = batch_index.max().item() + 1
+    
+    # Step 1: Sum features for each graph using scatter_sum_to_nodes
+    # Treat batch_index as the "destination" for scattering node features
+    summed_features = scatter_sum_to_nodes(node_features, batch_index, num_graphs)
+    
+    # Step 2: Count number of nodes in each graph
+    # Use ones with the same device and dtype as node_features
+    ones = torch.ones(node_features.size(0), dtype=node_features.dtype, device=node_features.device)
+    counts = scatter_sum_to_nodes(ones.unsqueeze(-1), batch_index, num_graphs)  # Shape: (num_graphs, 1)
+    counts = counts.squeeze(-1)  # Shape: (num_graphs,)
+    
+    # Step 3: Compute mean by dividing sum by count
+    # Avoid division by zero (shouldn't happen if all graphs have at least one node)
+    mean_features = summed_features / counts.unsqueeze(-1)
+    
+    # Handle potential NaN from division by zero (if any graph has no nodes)
+    mean_features = torch.nan_to_num(mean_features, nan=0.0)
+    
+    return mean_features
 
 # Step 27 - global_sum_pool (not yet solved)
 # TODO: implement
