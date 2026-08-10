@@ -1284,8 +1284,20 @@ def accuracy_metric(logits, targets):
     
     return correct / total
 
-# Step 40 - mae_metric (not yet solved)
-# TODO: implement
+# Step 40 - mae_metric
+import torch
+
+def mae_metric(predictions, targets):
+    # TODO: Compute mean absolute error between predicted and target continuous values.
+    # Flatten both tensors to 1-D
+    pred_flat = predictions.flatten()
+    target_flat = targets.flatten()
+    
+    # Compute mean absolute error
+    mae = torch.mean(torch.abs(pred_flat - target_flat))
+    
+    # Return as Python float
+    return mae.item()
 
 # Step 41 - gnn_train_step (not yet solved)
 # TODO: implement
