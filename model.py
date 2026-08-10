@@ -487,8 +487,64 @@ def init_gcn_parameters(in_dim, out_dim, with_bias=True, seed=None):
     
     return params
 
-# Step 18 - gcn_stack_forward (not yet solved)
-# TODO: implement
+# Step 18 - gcn_stack_forward
+import torch
+
+def gcn_stack_forward(node_features, src, dst, param_list, activations=None, num_nodes=None):
+    """Run a stack of GCN layers to produce deep node embeddings.
+
+    Args:
+        node_features: FloatTensor of shape (N, F0).
+        src: LongTensor of shape (E,) source indices.
+        dst: LongTensor of shape (E,) destination indices.
+        param_list: list of dicts, each with 'weight' (Fin, Fout) and optional 'bias' (Fout,).
+        activations: optional list of callables or None, one per layer.
+        num_nodes: optional int N; defaults to node_features.shape[0].
+
+    Returns:
+        embeddings: FloatTensor of shape (N, FL), the final layer output.
+        all_layer_outputs: list of FloatTensor outputs after each layer.
+    """
+    # Set num_nodes if not provided
+    if num_nodes is None:
+        num_nodes = node_features.shape[0]
+    
+    # If activations is None, create a list of None for each layer
+    if activations is None:
+        activations = [None] * len(param_list)
+    
+    # Ensure activations list matches param_list length
+    if len(activations) != len(param_list):
+        raise ValueError(f"activations length ({len(activations)}) must match param_list length ({len(param_list)})")
+    
+    # Initialize with input features
+    current_features = node_features
+    all_layer_outputs = []
+    
+    # Apply each GCN layer sequentially
+    for params, activation in zip(param_list, activations):
+        # Extract weight and optional bias from params
+        weight = params['weight']
+        bias = params.get('bias', None)
+        
+        # Apply GCN layer
+        current_features = gcn_layer_forward(
+            current_features, 
+            src, 
+            dst, 
+            weight, 
+            bias=bias, 
+            num_nodes=num_nodes, 
+            activation=activation
+        )
+        
+        # Store the output of this layer
+        all_layer_outputs.append(current_features)
+    
+    # Final embeddings is the output of the last layer
+    embeddings = current_features
+    
+    return embeddings, all_layer_outputs
 
 # Step 19 - gat_attention_logits (not yet solved)
 # TODO: implement
